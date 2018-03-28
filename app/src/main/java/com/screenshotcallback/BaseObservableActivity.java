@@ -11,14 +11,12 @@ import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 
+public class BaseObservableActivity extends AppCompatActivity {
 
-public class BaseObservableActivity extends AppCompatActivity{
-
-    private static final String TAG = BaseObservableActivity.class.getSimpleName();
-    private static final int REQUEST_CODE_READ_EXTERNAL_STORAGE_PERMISSION = 3009;
+    private static final int REQUEST_CODE_READ_EXTERNAL_STORAGE_PERMISSION = 182;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,25 +25,12 @@ public class BaseObservableActivity extends AppCompatActivity{
         checkReadExternalStoragePermission();
     }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        startObserver();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        pauseObserver();
-    }
-
     ContentObserver observer  = new ContentObserver(new Handler()) {
 
         @Override
         public void onChange(boolean selfChange, Uri uri) {
 
             if (uri.toString().matches(MediaStore.Images.Media.EXTERNAL_CONTENT_URI.toString() + "/[0-9]+")) {
-
                 Cursor cursor = null;
                 try {
                     cursor = getContentResolver().query(uri, new String[] {
@@ -53,11 +38,9 @@ public class BaseObservableActivity extends AppCompatActivity{
                             MediaStore.Images.Media.DATA
                     }, null, null, null);
                     if (cursor != null && cursor.moveToFirst()) {
-                        final String fileName = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME));
-                        final String path = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DATA));
-                        // TODO: apply filter on the file name to ensure it's screen shot event
-                        Log.d(TAG, "screen shot added " + fileName + " " + path);
-                    }
+                        /*final String fileName = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME));
+                        final String path = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DATA));*/
+                        new AlertDialog.Builder(BaseObservableActivity.this).setMessage("SCREENSHOT!").show(); }
                 } finally {
                     if (cursor != null)  {
                         cursor.close();
@@ -67,6 +50,21 @@ public class BaseObservableActivity extends AppCompatActivity{
             super.onChange(selfChange, uri);
         }
     };
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        getContentResolver().registerContentObserver(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                true, observer
+        );
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        getContentResolver().unregisterContentObserver(observer);
+    }
 
     private void checkReadExternalStoragePermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -81,16 +79,5 @@ public class BaseObservableActivity extends AppCompatActivity{
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
                 super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-    }
-
-    private void startObserver() {
-        getContentResolver().registerContentObserver(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                true, observer
-        );
-    }
-
-    private void pauseObserver() {
-        getContentResolver().unregisterContentObserver(observer);
     }
 }
